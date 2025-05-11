@@ -12,7 +12,7 @@ cash_flow_data = pd.DataFrame({
     'outflow': [200 if i % 7 == 0 else 0 for i in range(31)]
 })
 cash_flow_data['net'] = cash_flow_data['inflow'] - cash_flow_data['outflow']
-cash_flow_data['day'] = cash_flow_data['date'].dt.day
+cash_flow_data['cumulative_cash'] = cash_flow_data['net'].cumsum()
 
 transactions = pd.DataFrame({
     'date': ['2025-05-10', '2025-05-15', '2025-05-18', '2025-05-25'],
@@ -34,16 +34,15 @@ st.title("🏛️ Financial Telemetry Dashboard")
 
 col1, col2 = st.columns([2, 1])
 
-# 1. Cash Flow Heatmap + Transactions
+# 1. Cumulative Cash Flow Line Chart + Transactions
 with col1:
-    st.subheader("🔢 Cash Flow Calendar")
-    heatmap_chart = alt.Chart(cash_flow_data).mark_rect().encode(
-        x=alt.X('day:O', title='Day of Month'),
-        y=alt.value(1),
-        color=alt.Color('net:Q', scale=alt.Scale(scheme='redyellowgreen'), title='Net Cash'),
-        tooltip=['date:T', 'inflow', 'outflow', 'net']
-    ).properties(height=100)
-    st.altair_chart(heatmap_chart, use_container_width=True)
+    st.subheader("🔢 Cumulative Cash Flow")
+    line_chart = alt.Chart(cash_flow_data).mark_line(point=True).encode(
+        x='date:T',
+        y='cumulative_cash:Q',
+        tooltip=['date:T', 'cumulative_cash']
+    ).properties(height=250)
+    st.altair_chart(line_chart, use_container_width=True)
 
     st.subheader("🚨 High-Impact Transactions")
     st.dataframe(transactions, use_container_width=True)
