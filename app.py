@@ -5,92 +5,69 @@ import altair as alt
 
 st.set_page_config(layout="wide")
 
-# Mock Data
-cash_flow_data = pd.DataFrame({
-    'date': pd.date_range(start='2025-05-01', end='2025-05-31'),
-    'inflow': [300 if i % 5 != 0 else 0 for i in range(31)],
-    'outflow': [200 if i % 7 == 0 else 0 for i in range(31)]
-})
-cash_flow_data['net'] = cash_flow_data['inflow'] - cash_flow_data['outflow']
-cash_flow_data['cumulative_cash'] = cash_flow_data['net'].cumsum()
-
-transactions = pd.DataFrame({
-    'date': ['2025-05-10', '2025-05-15', '2025-05-18', '2025-05-25'],
-    'description': ['Rent', 'Utilities', 'Insurance', 'Credit Card'],
-    'amount': [-1200, -180, -150, -300],
-    'defer': [False, True, True, False]
+# Mock Data for Demonstration
+cash_on_hand = 2200
+upcoming_payments = pd.DataFrame({
+    'Due Date': ['2025-05-15', '2025-05-21', '2025-05-25'],
+    'Description': ['Amex Statement', 'Visa Rent Payment', 'Capital One Auto'],
+    'Amount': [350, 1200, 450],
+    'Status': ['Pending', 'Pending', 'Pending']
 })
 
-net_worth_data = pd.DataFrame({
-    'year': ['2021', '2022', '2023', '2024', '2025'],
-    'Cash': [500, 1000, 1200, 1500, 1700],
-    'Investments': [1000, 1200, 1400, 1600, 2000],
-    'Real Estate': [300, 600, 900, 1200, 1600],
-    'Other': [200, 250, 300, 350, 400]
+credit_card_txns = pd.DataFrame({
+    'Date': pd.date_range(start='2025-05-01', periods=10),
+    'Merchant': ['Amazon', 'Starbucks', 'Groceries', 'Gas', 'Apple', 'Dining', 'Subscription', 'Uber', 'Coffee', 'Shopping'],
+    'Amount': [-80, -6, -150, -40, -10, -60, -20, -25, -8, -100],
+    'Category': ['Shopping', 'Dining', 'Groceries', 'Gas', 'Tech', 'Dining', 'Utilities', 'Transport', 'Dining', 'Shopping']
 })
 
-# Layout
-st.title("🏛️ Financial Telemetry Dashboard")
+# Compute burn rate
+rolling_burn = credit_card_txns.copy()
+rolling_burn['Rolling 7D Spend'] = rolling_burn['Amount'].rolling(window=7).sum()
 
-col1, col2 = st.columns([2, 1])
+# Compute discretionary spend
+discretionary_categories = ['Dining', 'Shopping', 'Entertainment', 'Coffee']
+credit_card_txns['Discretionary'] = credit_card_txns['Category'].isin(discretionary_categories)
 
-# 1. Cumulative Cash Flow Line Chart + Transactions
-with col1:
-    st.subheader("🔢 Cumulative Cash Flow")
-    line_chart = alt.Chart(cash_flow_data).mark_line(point=True).encode(
-        x='date:T',
-        y='cumulative_cash:Q',
-        tooltip=['date:T', 'cumulative_cash']
-    ).properties(height=250)
-    st.altair_chart(line_chart, use_container_width=True)
+# Header
+st.title("\U0001F4B0 Cashflow Telemetry Dashboard")
 
-    st.subheader("🚨 High-Impact Transactions")
-    st.dataframe(transactions, use_container_width=True)
+# Top Panel
+st.subheader("\U0001F4C8 Snapshot")
+col1, col2, col3 = st.columns(3)
+col1.metric("Cash on Hand", f"${cash_on_hand:,.0f}")
+col2.metric("Next Payment Due", "Visa - $1200", "May 21")
+col3.metric("Runway Estimate", "16 days", "based on avg burn")
 
-# 2. Cash Buffer Gauge
-with col2:
-    st.subheader("⛽ Cash Buffer")
-    buffer_days = 25  # Static example
-    st.metric("Days of Buffer", f"{buffer_days} days")
-
-    trend_data = pd.DataFrame({
-        'Day': range(1, 11),
-        'Buffer': [25 - i//2 for i in range(10)]
-    })
-    trend_chart = alt.Chart(trend_data).mark_line().encode(
-        x='Day',
-        y='Buffer'
-    )
-    st.altair_chart(trend_chart, use_container_width=True)
-
-# 3. Net Worth
-st.subheader("📊 Net Worth Breakdown")
-net_worth_melted = net_worth_data.melt('year', var_name='Asset', value_name='Value')
-area_chart = alt.Chart(net_worth_melted).mark_area(opacity=0.7).encode(
-    x='year:O',
-    y='Value:Q',
-    color='Asset:N'
-).properties(height=300)
-st.altair_chart(area_chart, use_container_width=True)
-
-# 4. Variance Analysis
-st.subheader("📊 Variance vs Forecast")
-forecast_data = pd.DataFrame({
-    'Category': ['Income', 'Rent', 'Utilities', 'Insurance'],
-    'Forecast': [5000, -1200, -150, -100],
-    'Actual': [4800, -1200, -180, -150]
+# Main Visual - Cashflow Forecast
+st.subheader("\U0001F4C6 Cashflow Projection")
+dates = pd.date_range(start='2025-05-01', periods=20)
+cash_projection = pd.DataFrame({
+    'Date': dates,
+    'Projected Cash': cash_on_hand + pd.Series([-100 * i for i in range(20)])
 })
-forecast_data['Variance'] = forecast_data['Actual'] - forecast_data['Forecast']
+line_chart = alt.Chart(cash_projection).mark_line(point=True).encode(
+    x='Date:T',
+    y='Projected Cash:Q',
+    tooltip=['Date:T', 'Projected Cash']
+).properties(height=250)
+st.altair_chart(line_chart, use_container_width=True)
 
-bar_chart = alt.Chart(forecast_data).transform_fold(
-    ['Forecast', 'Actual'],
-    as_=['Type', 'Amount']
-).mark_bar().encode(
-    x='Category:N',
-    y='Amount:Q',
-    color='Type:N',
-    column='Type:N'
+# Upcoming Payments
+st.subheader("\u26a0\ufe0f Upcoming Payment Schedule")
+st.dataframe(upcoming_payments, use_container_width=True)
+
+# Discretionary Spend
+st.subheader("\U0001F7E1 Discretionary Spending Tracker")
+filtered_txns = credit_card_txns[credit_card_txns['Discretionary']]
+st.dataframe(filtered_txns[['Date', 'Merchant', 'Amount', 'Category']], use_container_width=True)
+
+# Burn Rate
+st.subheader("\U0001F525 Rolling Spend Analysis")
+burn_chart = alt.Chart(rolling_burn).mark_line().encode(
+    x='Date:T',
+    y='Rolling 7D Spend:Q'
 )
-st.altair_chart(bar_chart, use_container_width=True)
+st.altair_chart(burn_chart, use_container_width=True)
 
-st.caption("Built for financial clarity and rapid decision-making.")
+st.caption("Stay sharp. Watch your cash. Make informed calls.")
